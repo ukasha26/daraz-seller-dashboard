@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daraz Seller Dashboard</title>
+
+  <!-- =====================================================
+    BOOTSTRAP 5 — Yeh CSS library hai jo humein
+    ready-made design components deti hai (forms, tables, badges etc.)
+    CDN = internet se directly load hoti hai, install nahi karna
+  ====================================================== -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── CSS Variables — ek jagah rang define karo, poori site mein use karo ── */
+    :root {
+      --daraz-orange : #F85606;
+      --daraz-dark   : #C94200;
+      --daraz-light  : #FFF3EE;
+      --daraz-pale   : #FFF8F5;
+    }
+
+    body {
+      background-color: #f5f5f5;
+      font-family: 'Nunito', sans-serif;
+      background-image: radial-gradient(circle at 0% 0%, rgba(248,86,6,.06) 0%, transparent 50%),
+                        radial-gradient(circle at 100% 100%, rgba(248,86,6,.04) 0%, transparent 50%);
+    }
+
+    /* ── Navbar styling ── */
+    .daraz-nav {
+      background: linear-gradient(135deg, var(--daraz-orange) 0%, var(--daraz-dark) 100%);
+      box-shadow: 0 4px 20px rgba(248,86,6,.3);
+    }
+
+    /* ── Card hover effect ── */
+    .stat-card {
+      transition: transform .2s, box-shadow .2s;
+      border: none;
+      border-radius: 16px;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px rgba(248,86,6,.15) !important;
+    }
+
+    /* ── Form card ── */
+    .form-card {
+      border-radius: 20px;
+      border: 1px solid #ffe0d3;
+      background: white;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: var(--daraz-orange);
+      box-shadow: 0 0 0 3px rgba(248,86,6,.15);
+    }
+
+    /* ── Table ── */
+    .inventory-table thead {
+      background: linear-gradient(135deg, var(--daraz-orange), var(--daraz-dark));
+      color: white;
+    }
+    .inventory-table tbody tr {
+      transition: background .15s;
+    }
+    .inventory-table tbody tr:hover {
+      background-color: var(--daraz-light) !important;
+    }
+
+    /* ── Row animation ── */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(-20px); }
+      to   { opacity: 1; transform: translateX(0);     }
+    }
+    .new-row { animation: slideIn .35s ease both; }
+
+    /* ── Delete button ── */
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #dc3545;
+      font-size: 1.1rem;
+      padding: 2px 6px;
+      border-radius: 6px;
+      transition: background .15s;
+    }
+    .btn-delete:hover { background: #fde8ea; }
+
+    /* ── Empty state ── */
+    .empty-state {
+      padding: 3rem;
+      color: #aaa;
+    }
+
+    /* ── Font override ── */
+    h1, h2, h3, h4, h5, .font-display {
+      font-family: 'Baloo 2', cursive;
+    }
+
+    /* ── Badge colors per category ── */
+    .badge-electronics  { background:#fff3e0; color:#e65100; }
+    .badge-fashion      { background:#fce4ec; color:#880e4f; }
+    .badge-home         { background:#e8f5e9; color:#1b5e20; }
+    .badge-sports       { background:#e3f2fd; color:#0d47a1; }
+    .badge-beauty       { background:#f3e5f5; color:#4a148c; }
+    .badge-other        { background:#eceff1; color:#263238; }
+  </style>
+</head>
+
+<body>
+
+  <!-- =====================================================
+    NAVBAR — Bootstrap ka ready-made navigation bar
+  ====================================================== -->
+  <nav class="daraz-nav navbar px-4 py-3 mb-4">
+    <div class="container-fluid d-flex align-items-center gap-3">
+      <!-- Logo -->
+      <div class="bg-white rounded-3 px-3 py-1 d-flex align-items-center gap-2">
+        <i class="bi bi-shop-window text-danger fs-5"></i>
+        <span class="font-display fw-800 fs-5" style="color:var(--daraz-orange)">daraz</span>
+      </div>
+      <div>
+        <h5 class="text-white mb-0 font-display">Seller Dashboard</h5>
+        <small class="text-white opacity-75">Inventory Management System</small>
+      </div>
+      <!-- Stats badge (top right) — dynamically updated by JS -->
+      <div class="ms-auto d-flex gap-2">
+        <span class="badge bg-white text-dark px-3 py-2 rounded-pill fs-6">
+          <i class="bi bi-box-seam me-1"></i>
+          Total Items: <strong id="totalItems">0</strong>
+        </span>
+        <span class="badge bg-white text-dark px-3 py-2 rounded-pill fs-6">
+          <i class="bi bi-currency-rupee me-1"></i>
+          Stock Value: <strong id="totalValue">0</strong>
+        </span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-xl px-4">
+    <div class="row g-4">
+
+      <!-- ================================================
+        LEFT COLUMN — Add Product Form
+      ================================================= -->
+      <div class="col-lg-4">
+        <div class="form-card card shadow-sm p-4">
+          <h5 class="font-display mb-4" style="color:var(--daraz-orange)">
+            <i class="bi bi-plus-circle-fill me-2"></i>Naya Product Add Karo
+          </h5>
+
+          <!-- Bootstrap Form — inputs ke liye -->
+          <div class="mb-3">
+            <label class="form-label fw-600 text-secondary small">
+              <i class="bi bi-tag me-1"></i>Product ka Naam
+            </label>
+            <!-- id="productName" — JS is se data uthayega -->
+            <input type="text" id="productName" class="form-control"
+                   placeholder="e.g. Samsung Galaxy S24" />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-600 text-secondary small">
+              <i class="bi bi-currency-rupee me-1"></i>Qeemat (PKR)
+            </label>
+            <div class="input-group">
+              <span class="input-group-text">₨</span>
+              <input type="number" id="productPrice" class="form-control"
+                     placeholder="e.g. 85000" min="0" />
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-600 text-secondary small">
+              <i class="bi bi-grid me-1"></i>Category
+            </label>
+            <!-- Bootstrap select dropdown -->
+            <select id="productCategory" class="form-select">
+              <option value="">-- Category Chunein --</option>
+              <option value="Electronics">📱 Electronics</option>
+              <option value="Fashion">👗 Fashion</option>
+              <option value="Home">🏠 Home & Living</option>
+              <option value="Sports">⚽ Sports</option>
+              <option value="Beauty">💄 Beauty</option>
+              <option value="Other">📦 Other</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-600 text-secondary small">
+              <i class="bi bi-boxes me-1"></i>Stock (Quantity)
+            </label>
+            <input type="number" id="productStock" class="form-control"
+                   placeholder="e.g. 50" min="0" />
+          </div>
+
+          <!-- Error message — JS ise dikhata/chhupata hai -->
+          <div id="formError" class="alert alert-danger py-2 small d-none"></div>
+
+          <!-- Add button — onclick pe addProduct() function chalega -->
+          <button onclick="addProduct()"
+                  class="btn w-100 fw-700 text-white py-2 rounded-3"
+                  style="background:var(--daraz-orange)">
+            <i class="bi bi-plus-lg me-2"></i>Add to Inventory
+          </button>
+
+          <!-- Clear all button -->
+          <button onclick="clearAll()"
+                  class="btn btn-outline-secondary w-100 fw-600 mt-2 rounded-3 small">
+            <i class="bi bi-trash me-1"></i>Sab Clear Karo (localStorage bhi)
+          </button>
+        </div>
+
+        <!-- localStorage info card -->
+        <div class="card border-0 mt-3 p-3 rounded-3"
+             style="background:var(--daraz-light);border-left:4px solid var(--daraz-orange)!important">
+          <p class="small mb-1 fw-700" style="color:var(--daraz-dark)">
+            <i class="bi bi-database-check me-1"></i>Auto-Save Active
+          </p>
+          <p class="small text-muted mb-0">
+            Aapka data browser mein save hai. Page reload karne par bhi data wapis aayega!
+          </p>
+        </div>
+      </div>
+
+      <!-- ================================================
+        RIGHT COLUMN — Inventory Table
+      ================================================= -->
+      <div class="col-lg-8">
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+          <div class="card-header bg-white border-bottom d-flex align-items-center justify-content-between py-3 px-4">
+            <h5 class="font-display mb-0" style="color:var(--daraz-dark)">
+              <i class="bi bi-table me-2"></i>Inventory List
+            </h5>
+            <span class="badge rounded-pill px-3"
+                  style="background:var(--daraz-light);color:var(--daraz-orange)">
+              <span id="itemCount">0</span> products
+            </span>
+          </div>
+
+          <div class="table-responsive">
+            <!-- Bootstrap Table — striped=alternate rows, hover=hover effect -->
+            <table class="table inventory-table table-hover mb-0">
+              <thead>
+                <tr>
+                  <th class="ps-4">#</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th>Qeemat</th>
+                  <th>Stock</th>
+                  <th>Date Added</th>
+                  <th class="text-center">Action</th>
+                </tr>
+              </thead>
+              <!-- =====================================================
+                TBODY — Yahan JS dynamically rows insert karega
+                innerHTML se NAHI — sirf createElement aur appendChild se
+              ====================================================== -->
+              <tbody id="inventoryBody">
+                <!-- Rows yahan JS banayega -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty state — jab koi product nahi ── -->
+          <div id="emptyState" class="empty-state text-center">
+            <i class="bi bi-inbox display-4 d-block mb-2 opacity-25"></i>
+            <p class="fw-600">Abhi koi product nahi hai</p>
+            <small>Upar form se apna pehla product add karo!</small>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- Bootstrap JS (modals, dropdowns etc ke liye) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- =====================================================
+    ██╗ █████╗ ██╗   ██╗ █████╗ ███████╗ ██████╗██████╗ ██╗██████╗ ████████╗
+    Yahan se asli JavaScript shuru hoti hai
+  ====================================================== -->
+  <script>
+
+    /* ============================================================
+      📌 CONCEPT 1: CLASS
+      ─────────────────────────────────────────────────────────────
+      Class ek "blueprint" hai — jaise ghar ka naksha.
+      Naksha se kitne bhi ghar bana sakte ho.
+      Class se kitne bhi "objects" bana sakte ho.
+
+      Hamare case mein: har product ek object hai.
+      Har product ka naam, qeemat, category etc. hoti hai.
+      Yeh structure CLASS define karti hai.
+    ============================================================ */
+    class Product {
+      // constructor = jab bhi "new Product(...)" likhein, yeh chalta hai
+      // Yeh incoming data ko "this" (is object) mein save karta hai
+      constructor(name, price, category, stock) {
+        this.id       = Date.now();             // Unique ID — current time se banao
+        this.name     = name;                   // Product ka naam
+        this.price    = parseFloat(price);      // String ko number mein badlo
+        this.category = category;               // Category
+        this.stock    = parseInt(stock);        // Stock quantity
+        this.date     = new Date().toLocaleDateString('en-PK'); // Aaj ki tarikh
+      }
+    }
+
+    /*
+      CLASS USE KARNE KA TARIQA:
+      ─────────────────────────
+      let p = new Product("Samsung", 85000, "Electronics", 10);
+      console.log(p.name);   → "Samsung"
+      console.log(p.price);  → 85000
+      console.log(p.id);     → 1703123456789  (ek unique number)
+    */
+
+
+    /* ============================================================
+      📌 CONCEPT 2: ARRAY
+      ─────────────────────────────────────────────────────────────
+      Array = cheezein ki list — jaise register mein entries.
+      Hamare products is array mein store honge.
+    ============================================================ */
+    let inventory = [];   // Shuruat mein khali list
+
+
+    /* ============================================================
+      📌 CONCEPT 3: localStorage aur JSON
+      ─────────────────────────────────────────────────────────────
+      localStorage = browser ka "yaaddasht" — page close hone ke baad bhi
+      data yaad rakhta hai (jaise fridge mein khana rakhna)
+
+      Problem: localStorage sirf TEXT store kar sakta hai.
+      Hamara inventory ek Array (complex cheez) hai — text nahi.
+
+      Solution: JSON
+        JSON.stringify(array) → Array ko TEXT mein badlo → save karo
+        JSON.parse(text)      → TEXT ko wapis Array mein badlo → use karo
+    ============================================================ */
+
+    // ── Page load par purana data wapis lao ──
+    const savedData = localStorage.getItem('darazInventory');
+    // Agar kuch saved tha toh parse karo, warna khali array raho
+    if (savedData) {
+      inventory = JSON.parse(savedData);  // Text → Array
+    }
+
+
+    /* ============================================================
+      📌 CONCEPT 4: ARROW FUNCTION
+      ─────────────────────────────────────────────────────────────
+      Normal function likhne ka tarika:
+        function kuch() { ... }
+
+      Arrow function — chhota aur modern tarika:
+        const kuch = () => { ... }
+
+      Dono same kaam karte hain, bas syntax alag hai.
+      Arrow functions zyada use hote hain modern JS mein.
+    ============================================================ */
+
+    // ── localStorage mein save karne ka kaam ──
+    // Arrow function: const naam = () => { kaam }
+    const saveToStorage = () => {
+      // inventory array ko JSON string mein badal ke save karo
+      localStorage.setItem('darazInventory', JSON.stringify(inventory));
+    };
+
+    // ── Stats update karne ka kaam (navbar mein totals) ──
+    const updateStats = () => {
+      const total     = inventory.length;                             // Kitne products hain
+      const totalVal  = inventory.reduce((sum, p) => sum + (p.price * p.stock), 0); // Total value
+
+      // HTML elements ko update karo
+      document.getElementById('totalItems').textContent = total;
+      document.getElementById('totalValue').textContent = '₨' + totalVal.toLocaleString('en-PK');
+      document.getElementById('itemCount').textContent  = total;
+
+      // Empty state dikhao ya chhupao
+      const emptyState = document.getElementById('emptyState');
+      emptyState.style.display = total === 0 ? 'block' : 'none';
+    };
+
+
+    /* ============================================================
+      📌 CONCEPT 5: DOM createElement aur appendChild
+      ─────────────────────────────────────────────────────────────
+      DOM = Document Object Model — browser ka poori HTML ka map
+
+      innerHTML se banana (BANNED in this assignment):
+        row.innerHTML = '<td>Samsung</td>';
+        (Yeh ek shortcut hai lekin security risk hai)
+
+      createElement se banana (SAHI TARIQA):
+        1. createElement('td') — naya td banao
+        2. td.textContent = 'Samsung' — text daalo
+        3. row.appendChild(td) — row mein lagao
+
+      Yeh zyada safe aur professional hai.
+    ============================================================ */
+
+    // ── Ek product ki table row banana ──
+    const createTableRow = (product, index) => {
+
+      // ── Step 1: <tr> banao (ek poori row) ──
+      const tr = document.createElement('tr');
+      tr.classList.add('new-row');        // CSS animation
+      tr.setAttribute('data-id', product.id); // ID store karo delete ke liye
+
+      // ── Helper: ek <td> banao aur text daalo ──
+      // Yeh bhi ek arrow function hai — chhhota kaam, chhoti function
+      const makeTd = (content, classes = '') => {
+        const td = document.createElement('td');  // <td> create kiya
+        if (classes) td.className = classes;       // CSS classes lagao (agar hain)
+        td.appendChild(content);                   // content andar daalo
+        return td;                                 // ready td wapis do
+      };
+
+      // ── TD 1: Serial Number ──
+      const numSpan = document.createElement('span');
+      numSpan.className   = 'badge rounded-pill bg-secondary';
+      numSpan.textContent = index + 1;  // 1 se shuru
+      tr.appendChild(makeTd(numSpan, 'ps-4 py-3'));
+
+      // ── TD 2: Product Name ──
+      const nameDiv  = document.createElement('div');
+      const nameText = document.createElement('strong');
+      nameText.textContent = product.name;
+      nameDiv.appendChild(nameText);
+      tr.appendChild(makeTd(nameDiv, 'py-3'));
+
+      // ── TD 3: Category Badge ──
+      const catSpan     = document.createElement('span');
+      const catLower    = product.category.toLowerCase();
+      catSpan.className = `badge badge-${catLower} px-3 py-2 rounded-pill fw-600`;
+      catSpan.textContent = product.category;
+      tr.appendChild(makeTd(catSpan));
+
+      // ── TD 4: Price ──
+      const priceSpan       = document.createElement('span');
+      priceSpan.className   = 'fw-700';
+      priceSpan.style.color = 'var(--daraz-orange)';
+      priceSpan.textContent = '₨' + product.price.toLocaleString('en-PK');
+      tr.appendChild(makeTd(priceSpan));
+
+      // ── TD 5: Stock ──
+      const stockSpan     = document.createElement('span');
+      // Agar stock kam hai toh red, zyada hai toh green badge
+      stockSpan.className = product.stock < 5
+        ? 'badge bg-danger-subtle text-danger px-3 py-2'
+        : 'badge bg-success-subtle text-success px-3 py-2';
+      stockSpan.textContent = product.stock + ' units';
+      tr.appendChild(makeTd(stockSpan));
+
+      // ── TD 6: Date ──
+      const dateTd           = document.createElement('td');
+      dateTd.textContent     = product.date;
+      dateTd.className       = 'text-muted small';
+      tr.appendChild(dateTd);
+
+      // ── TD 7: Delete Button ──
+      const actionTd  = document.createElement('td');
+      actionTd.className = 'text-center';
+
+      const delBtn    = document.createElement('button');
+      delBtn.className = 'btn-delete';
+      delBtn.title     = 'Delete karo';
+      delBtn.innerHTML = '<i class="bi bi-trash3-fill"></i>';  // icon ke liye innerHTML allowed hai
+
+      // Delete button par click hone par deleteProduct() chalao
+      // Arrow function mein product.id pass kar rahe hain
+      delBtn.onclick = () => deleteProduct(product.id);
+
+      actionTd.appendChild(delBtn);
+      tr.appendChild(actionTd);
+
+      return tr;  // poori ready row wapis do
+    };
+
+
+    // ── Poori table rebuild karo (fresh start) ──
+    const renderTable = () => {
+      const tbody = document.getElementById('inventoryBody');
+
+      // Pehle poori table saaf karo
+      // (loop se ek ek row remove — innerHTML se nahi!)
+      while (tbody.firstChild) {
+        tbody.removeChild(tbody.firstChild);
+      }
+
+      // Har product ke liye row banao aur table mein lagao
+      inventory.forEach((product, index) => {
+        const row = createTableRow(product, index);  // row banai
+        tbody.appendChild(row);                       // table mein lagayi
+      });
+
+      updateStats();  // navbar stats update karo
+    };
+
+
+    /* ============================================================
+      📌 MAIN FUNCTION: addProduct()
+      ─────────────────────────────────────────────────────────────
+      Yeh button click par chalta hai.
+      Saara flow yahan se start hota hai.
+    ============================================================ */
+    function addProduct() {
+      // ── 1. Form se data uthao ──
+      const name     = document.getElementById('productName').value.trim();
+      const price    = document.getElementById('productPrice').value.trim();
+      const category = document.getElementById('productCategory').value;
+      const stock    = document.getElementById('productStock').value.trim();
+      const errorDiv = document.getElementById('formError');
+
+      // ── 2. Validation — kya sab fields bhari hain? ──
+      if (!name || !price || !category || !stock) {
+        errorDiv.textContent = '⚠️ Sab fields bharna zaroori hai!';
+        errorDiv.classList.remove('d-none');  // error dikhao
+        return;  // yahan ruk jao, aage mat jao
+      }
+      if (parseFloat(price) <= 0 || parseInt(stock) < 0) {
+        errorDiv.textContent = '⚠️ Price ya Stock ka number sahi nahi!';
+        errorDiv.classList.remove('d-none');
+        return;
+      }
+
+      // Agar sab theek hai toh error chhupao
+      errorDiv.classList.add('d-none');
+
+      // ── 3. new Product() — Class se object banao ──
+      // Blueprint (class) se naya ghar (object) bana rahe hain
+      const newProduct = new Product(name, price, category, stock);
+
+      // ── 4. Array mein push karo ──
+      // .push() = list ke end mein naya item lagao
+      inventory.push(newProduct);
+
+      // ── 5. localStorage mein save karo (JSON stringify) ──
+      saveToStorage();  // array → JSON text → browser memory
+
+      // ── 6. Table ko update karo ──
+      renderTable();
+
+      // ── 7. Form saaf karo ──
+      document.getElementById('productName').value    = '';
+      document.getElementById('productPrice').value   = '';
+      document.getElementById('productCategory').value = '';
+      document.getElementById('productStock').value   = '';
+    }
+
+
+    /* ============================================================
+      deleteProduct() — Kisi ek item ko hatana
+    ============================================================ */
+    function deleteProduct(id) {
+      // .filter() = array se woh items rakhta hai jo condition satisfy karen
+      // Yahan: woh products rakhte hain jinka id ALAG hai
+      // Matlab: jis product ko hatana hai, woh automatically chala jaata hai
+      inventory = inventory.filter(product => product.id !== id);
+
+      saveToStorage();  // updated list save karo
+      renderTable();    // table dobara banao
+    }
+
+
+    /* ============================================================
+      clearAll() — Sab data mita dena
+    ============================================================ */
+    function clearAll() {
+      if (!confirm('Sach mein sab delete karna hai? Yeh wapis nahi aayega!')) return;
+
+      inventory = [];                               // array khali karo
+      localStorage.removeItem('darazInventory');   // browser se bhi hatao
+      renderTable();                                // khali table dikhao
+    }
+
+
+    /* ============================================================
+      PAGE LOAD — Jab page khulta hai, purana data wapis lao
+    ============================================================ */
+    // Yeh function page load hote hi ek baar chalta hai
+    renderTable();
+
+  </script>
+</body>
+</html>
